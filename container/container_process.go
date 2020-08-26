@@ -16,9 +16,6 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File) {
 
 		return nil, nil
 	}
-
-
-
 //	args := []string{"init", command}
 
 	cmd := exec.Command("/proc/self/exe", "init")
