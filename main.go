@@ -20,6 +20,8 @@ func main(){
 	}
 
 
+	//初始化 日志配置
+	//在app run 执行之前执行的
 	app.Before = func(context *cli.Context) error {
 
 		log.SetFormatter(&log.JSONFormatter{})
@@ -32,9 +34,4 @@ func main(){
 
 		log.Fatal(err)
 	}
-
-
-
-
-
 }
