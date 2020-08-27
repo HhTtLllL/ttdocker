@@ -42,7 +42,12 @@ func Run(tty bool, comArray []string, res *subsystems.ResourceConfig){
 	//发送用户命令
 	sendInitCommand(comArray, writePipe)
 	parent.Wait()
-	//os.Exit(-1)
+
+	mntURL := "/root/mnt"
+	rootURL := "/root/"
+
+	container.DeleteWorkSpace(rootURL, mntURL)
+	os.Exit(0)
 
 }
 
