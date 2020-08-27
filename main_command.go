@@ -34,7 +34,10 @@ var runCommand = cli.Command{
 			Name: "cputest",
 			Usage: "cpuset limit",
 		},
-
+		cli.StringFlag{
+			Name: "v",
+			Usage: "volume",
+		},
 	},
 	/*
 		这里是 run 命令执行的真正函数
@@ -58,7 +61,7 @@ var runCommand = cli.Command{
 		//fmt.Println(context.Args())
 	//	cmd := context.Args().Get(0)
 		tty := context.Bool("ti")
-
+		volume := context.String("v")
 		resConf := &subsystems.ResourceConfig{
 
 			//取出各个字段对应的参数值
@@ -68,7 +71,7 @@ var runCommand = cli.Command{
 		}
 
 
-		Run(tty, cmdArray,resConf)
+		Run(tty, cmdArray,resConf, volume)
 
 		return nil
 	},
