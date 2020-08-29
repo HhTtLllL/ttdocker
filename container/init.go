@@ -73,6 +73,7 @@ func readUserCommand() []string {
 	if err != nil {
 
 		log.Errorf("init read pipe error %v", err)
+		return nil
 	}
 
 	msgStr := string(msg)
@@ -96,7 +97,7 @@ func setUpMnout(){
 	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
 	//挂载proc 系统
 	syscall.Mount("proc","/proc","proc",uintptr(defaultMountFlags),"")
-	syscall.Mount("tmpfd", "/dev", "tmpfd", syscall.MS_NOSUID | syscall.MS_STRICTATIME, "mode=755")
+	syscall.Mount("tmpfs", "/dev", "tmpfs", syscall.MS_NOSUID | syscall.MS_STRICTATIME, "mode=755")
 }
 
 func pivotRoot(root string) error {

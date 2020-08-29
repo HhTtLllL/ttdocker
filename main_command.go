@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/urfave/cli"
+	"os"
 	"ttdocker/cgroups/subsystems"
 	"ttdocker/container"
 )
@@ -38,6 +39,15 @@ var runCommand = cli.Command{
 			Name: "v",
 			Usage: "volume",
 		},
+		cli.BoolFlag{
+			Name: "d",
+			Usage: "detach container",
+		},
+		//　提供 run 后面的 -name 指定容器名字参数
+		cli.StringFlag{
+			Name: "name",
+			Usage: "container name",
+		},
 	},
 	/*
 		这里是 run 命令执行的真正函数
@@ -49,6 +59,7 @@ var runCommand = cli.Command{
 
 		if len(context.Args()) < 1 {
 
+			fmt.Println(context.Args())
 			return fmt.Errorf("missing container command")
 		}
 
@@ -60,8 +71,15 @@ var runCommand = cli.Command{
 		}
 		//fmt.Println(context.Args())
 	//	cmd := context.Args().Get(0)
-		tty := context.Bool("ti")
+		createTty := context.Bool("ti")
+		detach := context.Bool("d")
 		volume := context.String("v")
+
+		if createTty && detach {
+
+			return fmt.Errorf("ti and d paramter can not both provided")
+		}
+
 		resConf := &subsystems.ResourceConfig{
 
 			//取出各个字段对应的参数值
@@ -70,8 +88,10 @@ var runCommand = cli.Command{
 			CpuShare: context.String("cpushare"),
 		}
 
+		containerName := context.String("name")
+		fmt.Println("name = ", containerName)
 
-		Run(tty, cmdArray,resConf, volume)
+		Run(createTty, cmdArray,resConf, volume, containerName)
 
 		return nil
 	},
@@ -91,3 +111,86 @@ var initCommand = cli.Command{
 	},
 }
 
+var commitCommand = cli.Command{
+	Name: "commit",
+	Usage: "commit a container into image",
+
+	Action: func(context *cli.Context) error {
+
+		if len(context.Args()) < 1 {
+
+			return fmt.Errorf("missing container name")
+		}
+		imageName := context.Args().Get(0)
+
+		commitContainer(imageName)
+
+		return nil
+	},
+}
+
+var listCommand = cli.Command{
+	Name: "ps",
+	Usage: "list all the containers",
+
+	Action: func(context *cli.Context) error{
+
+		ListContainers()
+		return nil
+	},
+}
+
+var logCommand = cli.Command{
+	Name: "logs",
+	Usage: "print logs of a container",
+	Action: func(context *cli.Context) error {
+
+		if len(context.Args()) < 1 {
+			return fmt.Errorf("please input your container name")
+		}
+
+		containerName := context.Args().Get(0)
+		logContainer(containerName)
+
+		return nil
+	},
+}
+
+var execCommand = cli.Command{
+	Name: "exec",
+	Usage: "exec a command into container",
+	Action: func(context *cli.Context) error {
+		//This is for callback
+		/*if os.Getenv(ENV_EXEC_PID) != "" {
+
+			log.Infof("pid callback pid %s", os.Getgid())
+			return nil
+		}*/
+
+		fmt.Println("env_pid11 = ",os.Getenv(ENV_EXEC_PID))
+		if os.Getenv(ENV_EXEC_PID) != "" {
+
+			log.Infof("pid callback pid %s", os.Getgid())
+			return nil
+		}
+
+		if len(context.Args()) < 2 {
+			return fmt.Errorf("Missing container name or command")
+		}
+		//获取容器的名字, 从命令行获取
+		containerName := context.Args().Get(0)
+		//将命令以切片的方式保存
+		var commandArray []string
+
+		for _,arg := range context.Args().Tail() {
+
+			commandArray = append(commandArray, arg)
+		}
+
+		//执行命令
+		fmt.Println("开始执行命令")
+		ExecContainer(containerName, commandArray)
+
+		return nil
+	},
+}

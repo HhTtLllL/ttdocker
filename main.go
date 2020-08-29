@@ -1,8 +1,8 @@
 package main
 
-import(
-	"github.com/urfave/cli"
+import (
 	log "github.com/Sirupsen/logrus"
+	"github.com/urfave/cli"
 	"os"
 )
 
@@ -20,6 +20,8 @@ func main(){
 		//目的是把运行状态容器的内存存储成镜像保存下来
 		commitCommand,
 		listCommand,
+		logCommand,
+		execCommand,
 	}
 
 

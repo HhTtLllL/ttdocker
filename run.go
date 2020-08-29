@@ -19,7 +19,13 @@ import (
 
 func Run(tty bool, comArray []string, res *subsystems.ResourceConfig, volume string, containerName string){
 
-	parent, writePipe := container.NewParentProcess(tty, volume)
+	containerID := randStringBytes(10)
+	if containerName == "" {
+
+		containerName = containerID
+	}
+
+	parent, writePipe := container.NewParentProcess(tty, volume, containerName)
 
 	//parent := container.NewParentProcess(tty, command)
 	//start 调用前面创建好的command 命令
@@ -35,17 +41,17 @@ func Run(tty bool, comArray []string, res *subsystems.ResourceConfig, volume str
 	}
 
 	//记录容器信息
-	fmt.Println("开始记录容器信息")
-	fmt.Println("comarray = ", comArray)
-	containerName, err := recordContainerInfo(parent.Process.Pid, comArray, containerName)
-	fmt.Println("成功记录容器信息1")
+	//fmt.Println("开始记录容器信息")
+	//fmt.Println("comarray = ", comArray)
+	containerName, err := recordContainerInfo(parent.Process.Pid, comArray, containerName, containerID)
+	//fmt.Println("成功记录容器信息1")
 	if err != nil {
 
 		log.Errorf("recode container info error %v", err)
 		return
 	}
 
-	fmt.Println("成功记录容器信息")
+	//fmt.Println("成功记录容器信息")
 
 	// use mydocker-cgroup as cgroup name
 	//创建 cgroup manager ，并通过调用 set 和 apply 设置资源限制并使限制在容器上生效
@@ -69,11 +75,13 @@ func Run(tty bool, comArray []string, res *subsystems.ResourceConfig, volume str
 		deleteContainerInfo(containerName)
 	}
 
+	/*
 	mntURL := "/root/mnt"
 	rootURL := "/root/"
 	//退出前删除对应的目录
 	container.DeleteWorkSpace(rootURL, mntURL, volume)
 	os.Exit(0)
+*/
 
 }
 
@@ -89,19 +97,20 @@ func sendInitCommand(comArray []string, writePipe *os.File){
 
 
 //记录容器信息,将容器的信息持久化到磁盘中
-func recordContainerInfo (containerPID int, commandArray []string, containerName string) (string, error){
+func recordContainerInfo (containerPID int, commandArray []string, containerName string, id string) (string, error){
 	//首先生成　10 为数字的容器ID
-	fmt.Println("开始获取随机数")
+	/*fmt.Println("开始获取随机数")
 	id := randStringBytes(10)
-	fmt.Println("成功获取随机数")
+	fmt.Println("成功获取随机数")*/
 	//以当前时间为容器创建时间
 	createTime := time.Now().Format("2020-08-28 13:08:00")
 	command := strings.Join(commandArray, "")
 
+
 	//如果用户不指定容器名，　那么就以容器ID　当做容器名
-	if containerName == "" {
+	/*if containerName == "" {
 		containerName = id
-	}
+	}*/
 
 	//生成容器信息的结构体实例
 
@@ -129,17 +138,17 @@ func recordContainerInfo (containerPID int, commandArray []string, containerName
 
 	//如果改路径不存在，级联创建
 
-	fmt.Println("开始创建目录")
+	//fmt.Println("开始创建目录")
 	if err := os.MkdirAll(dirUrl, 0622); err != nil {
-		log.Errorf("mkdir error %s error %v", dirUrl, err)
 
+		log.Errorf("mkdir error %s error %v", dirUrl, err)
 		return "",err
 	}
 
-	fmt.Println("成功创建目录")
+	//fmt.Println("成功创建目录")
 	fileName := dirUrl + "/" + container.ConfigName
 	//创建最终的配置文件 -- config.json 文件
-	fmt.Println("开始创建文件")
+	//fmt.Println("开始创建文件")
 	file, err := os.Create(fileName)
 	defer file.Close()
 	if err != nil {

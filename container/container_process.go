@@ -1,20 +1,43 @@
 package container
 
 import (
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 )
+//一个容器的基本信息
+type ContainerInfo struct {
+	Pid string `json:"pid"`   //容器的init进程在 宿主机上的　PID
+	Id string `json:"id"`		// 容器ID
+	Name string `json:"name"`  // 容器名
+	Command string `json:"command"` //容器内init 进程的运行命令
+	CreatedTime string `json:"createTime"` //创建时间
+	Status string `json:"status"`    //容器的状态
+}
 
-func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File) {
+// 状态
+var (
+	RUNNING string = "running"
+	STOP string = "stopped"
+	Exit string = "exited"
+	DefaultInfoLocation string = "/var/run/ttdocker/%s/"
+	ConfigName  string = "config.json"
+	ContainerLogFile string = "container.log"
+
+)
+
+
+
+func NewParentProcess(tty bool, volume string, containerName string) (*exec.Cmd, *os.File) {
 
 	readPipe, writePipe, err := NewPipe()
 
 	if err != nil {
-		log.Errorf("new pipe error %v",err)
 
+		log.Errorf("new pipe error %v",err)
 		return nil, nil
 	}
 //	args := []string{"init", command}
@@ -34,6 +57,24 @@ func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File) {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+	}else {
+
+		//生成容器对应目录的container. log
+		dirURL := fmt.Sprintf(DefaultInfoLocation, containerName)
+		if err := os.MkdirAll(dirURL, 0622); err != nil {
+
+			log.Errorf("NewParentProcess mkdir %s error %v", dirURL, err)
+			return nil, nil
+		}
+
+		stdLogFilePath := dirURL + ContainerLogFile
+		stdLogFile, err := os.Create(stdLogFilePath)
+		if err != nil {
+			log.Errorf("newParentProcess create file %s error %v", stdLogFilePath, err)
+			return nil, nil
+		}
+
+		cmd.Stdout = stdLogFile
 	}
 
 	//这个属性的意思是会外带着这个文件句柄去创建子进程
@@ -45,9 +86,9 @@ func NewParentProcess(tty bool, volume string) (*exec.Cmd, *os.File) {
 	rootURL := "/root/"
 	NewWorkSpace(rootURL, mntURL, volume)
 
-	cmd.Dir = mntURL
+	//cmd.Dir = mntURL
+	cmd.Dir = "/root/busybox"
 	return cmd, writePipe
-
 }
 
 
@@ -122,7 +163,7 @@ func CreateWriteLayer(rootURL string){
 
 	if err := os.Mkdir(writeURL, 0777); err != nil {
 
-		log.Errorf("mkdir dis %s error %v", writeURL, err)
+		log.Errorf("mkdir dis %s error %v2222", writeURL, err)
 	}
 }
 
