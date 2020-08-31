@@ -5,7 +5,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 )
 //一个容器的基本信息
@@ -16,6 +15,7 @@ type ContainerInfo struct {
 	Command string `json:"command"` //容器内init 进程的运行命令
 	CreatedTime string `json:"createTime"` //创建时间
 	Status string `json:"status"`    //容器的状态
+	Volume string `json:"volume"`
 }
 
 // 状态
@@ -26,26 +26,27 @@ var (
 	DefaultInfoLocation string = "/var/run/ttdocker/%s/"
 	ConfigName  string = "config.json"
 	ContainerLogFile string = "container.log"
+	RootUrl string = "/root"
+	MntUrl string = "/root/mnt/%s"
+	WriteLayerUrl string = "/root/writeLayer/%s"
 
 )
 
 
 
-func NewParentProcess(tty bool, volume string, containerName string) (*exec.Cmd, *os.File) {
+func NewParentProcess(tty bool, volume string, containerName string, imageName string) (*exec.Cmd, *os.File) {
 
 	readPipe, writePipe, err := NewPipe()
-
 	if err != nil {
 
 		log.Errorf("new pipe error %v",err)
 		return nil, nil
 	}
 //	args := []string{"init", command}
-
 	cmd := exec.Command("/proc/self/exe", "init")
 
+	//fork 出一个新进程
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-
 		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS |
 			syscall.CLONE_NEWNET | syscall.CLONE_NEWIPC | syscall.CLONE_NEWUSER,
 
@@ -79,15 +80,18 @@ func NewParentProcess(tty bool, volume string, containerName string) (*exec.Cmd,
 
 	//这个属性的意思是会外带着这个文件句柄去创建子进程
 	cmd.ExtraFiles = []*os.File{readPipe}
-
 	//切换到　/root/busybox　目录
 	//cmd.Dir = "/root/busybox"
-	mntURL := "/root/mnt"
-	rootURL := "/root/"
-	NewWorkSpace(rootURL, mntURL, volume)
+	//mntURL := "/root/mnt"
+	//rootURL := "/root/"
+	//NewWorkSpace(rootURL, mntURL, volume, containerName)
+	NewWorkSpace(volume,imageName, containerName)
 
 	//cmd.Dir = mntURL
-	cmd.Dir = "/root/busybox"
+	//cmd.Dir = "/root/busybox"
+	cmd.Dir = fmt.Sprintf(MntUrl, containerName)
+
+	fmt.Println("cmd.Dir = ", cmd.Dir)
 	return cmd, writePipe
 }
 
@@ -106,7 +110,7 @@ func NewPipe() (*os.File, *os.File, error){
 
 	return read,write,nil
 }
-
+/*
 //Create a AUFS filesystem as container root workspace
 //创建一个aufs 文件系统作为容器的根　的工作目录
 func NewWorkSpace(rootURL string, mntURL string, volume string){
@@ -133,6 +137,7 @@ func NewWorkSpace(rootURL string, mntURL string, volume string){
 	}
 
 }
+
 
 func CreateReadOnlyLayer(rootURL string) {
 	busyboxURL := rootURL + "busybox/"
@@ -221,7 +226,7 @@ func MountVolume(rootURL string, mntURL string, volumeURLs []string){
 
 //Delete the AUFS filesystem while container exit
 //当　容器退出的时候，　删除aufs　文件系统
-func DeleteWorkSpace(rootURL string, mntURL string, volume string){
+func DeleteWorkSpace(rootURL string, mntURL string, volume string, imageName string, containerName string){
 
 	if volume != "" {
 
@@ -366,3 +371,4 @@ func volumeUrlExtract(volume string) ([]string) {
 
 
 
+*/
