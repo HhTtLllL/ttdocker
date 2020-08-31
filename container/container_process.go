@@ -18,7 +18,7 @@ type ContainerInfo struct {
 	Volume string `json:"volume"`
 }
 
-// 状态
+// 状态  全局变量
 var (
 	RUNNING string = "running"
 	STOP string = "stopped"
@@ -34,7 +34,7 @@ var (
 
 
 
-func NewParentProcess(tty bool, volume string, containerName string, imageName string) (*exec.Cmd, *os.File) {
+func NewParentProcess(tty bool, volume string, containerName string, imageName string, envSlice []string) (*exec.Cmd, *os.File) {
 
 	readPipe, writePipe, err := NewPipe()
 	if err != nil {
@@ -80,6 +80,8 @@ func NewParentProcess(tty bool, volume string, containerName string, imageName s
 
 	//这个属性的意思是会外带着这个文件句柄去创建子进程
 	cmd.ExtraFiles = []*os.File{readPipe}
+	cmd.Env = append(os.Environ(), envSlice...)
+
 	//切换到　/root/busybox　目录
 	//cmd.Dir = "/root/busybox"
 	//mntURL := "/root/mnt"

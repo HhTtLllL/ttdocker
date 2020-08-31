@@ -17,7 +17,7 @@ import (
 
 
 
-func Run(tty bool, comArray []string, res *subsystems.ResourceConfig, volume string, containerName string){
+func Run(tty bool, comArray []string, res *subsystems.ResourceConfig, volume string, containerName string, imageName string, envSlice []string){
 
 	containerID := randStringBytes(10)
 	if containerName == "" {
@@ -25,7 +25,8 @@ func Run(tty bool, comArray []string, res *subsystems.ResourceConfig, volume str
 		containerName = containerID
 	}
 
-	parent, writePipe := container.NewParentProcess(tty, volume, containerName)
+	//将环境变量传递给 process
+	parent, writePipe := container.NewParentProcess(tty, volume, containerName, imageName, envSlice)
 
 	//parent := container.NewParentProcess(tty, command)
 	//start 调用前面创建好的command 命令
@@ -35,6 +36,8 @@ func Run(tty bool, comArray []string, res *subsystems.ResourceConfig, volume str
 		return
 	}
 
+	// start 以非阻塞方式运行， run 为阻塞，等待命令结束
+	//首先会clone 出一个namspace 隔离的进程, 然后在子进程中,调用/proc/self/exe  调用自己, 发送init 参数
 	if err := parent.Start(); err != nil {
 
 		log.Error(err)
@@ -43,7 +46,7 @@ func Run(tty bool, comArray []string, res *subsystems.ResourceConfig, volume str
 	//记录容器信息
 	//fmt.Println("开始记录容器信息")
 	//fmt.Println("comarray = ", comArray)
-	containerName, err := recordContainerInfo(parent.Process.Pid, comArray, containerName, containerID)
+	containerName, err := recordContainerInfo(parent.Process.Pid, comArray, containerName, containerID, volume)
 	//fmt.Println("成功记录容器信息1")
 	if err != nil {
 
@@ -66,20 +69,22 @@ func Run(tty bool, comArray []string, res *subsystems.ResourceConfig, volume str
 
 	//对容器设置完限制之后，初始化容器
 	//发送用户命令
-
-
+/*
+	mntURL := "/root/mnt"
+	rootURL := "/root/"
+*/
 	sendInitCommand(comArray, writePipe)
 	//　阻塞在这
 	if tty {
 		parent.Wait()
 		deleteContainerInfo(containerName)
+		container.DeleteWorkSpace(volume,containerName)
 	}
 
 	/*
 	mntURL := "/root/mnt"
 	rootURL := "/root/"
 	//退出前删除对应的目录
-	container.DeleteWorkSpace(rootURL, mntURL, volume)
 	os.Exit(0)
 */
 
@@ -97,7 +102,7 @@ func sendInitCommand(comArray []string, writePipe *os.File){
 
 
 //记录容器信息,将容器的信息持久化到磁盘中
-func recordContainerInfo (containerPID int, commandArray []string, containerName string, id string) (string, error){
+func recordContainerInfo (containerPID int, commandArray []string, containerName string, id string, volume string) (string, error){
 	//首先生成　10 为数字的容器ID
 	/*fmt.Println("开始获取随机数")
 	id := randStringBytes(10)
@@ -121,6 +126,7 @@ func recordContainerInfo (containerPID int, commandArray []string, containerName
 		CreatedTime: createTime,
 		Status: container.RUNNING,
 		Name: containerName,
+		Volume: volume,
 	}
 
 	//将容器信息对象 json 序列化成字符串
@@ -193,3 +199,4 @@ func deleteContainerInfo(containerId string){
 		log.Errorf("remove dir %s error %v", dirUrl, err)
 	}
 }
+

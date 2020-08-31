@@ -10,6 +10,7 @@ import (
 
 //Create a AUFS filesystem as container root workspace
 //创建一个aufs 文件系统作为容器的根　的工作目录
+//为每个容器创建文件系统
 func NewWorkSpace(volume string, imageName string, containerName string){
 
 	CreateReadOnlyLayer(imageName)  //新建busybox 文件夹，将busybox.tar 解压到 busybox 目录下，作为容器的只读层
@@ -34,6 +35,8 @@ func NewWorkSpace(volume string, imageName string, containerName string){
 	}
 }
 
+// 根据用户输入的镜像为每个容器创建只读层。 镜像解压出来的只读层以RootUrl + imageName 命名
+//根据tar 格式的镜像文件作为只读层
 func CreateReadOnlyLayer(imageName string)  error {
 	/*busyboxURL := rootURL + "busybox/"
 	busyboxTarURL := rootURL + "busyox.tar"*/
@@ -49,11 +52,13 @@ func CreateReadOnlyLayer(imageName string)  error {
 	}
 
 	if !exist {
+		//如果目录不错在就创建这个目录
 		if err := os.MkdirAll(unTarFolderUrl, 0622); err != nil {
 			log.Errorf("mkdir dis %s error %v", unTarFolderUrl, err)
 			return err
 		}
 
+		//解压
 		if _, err := exec.Command("tar", "-xvf", imageUrl, "-C", unTarFolderUrl).CombinedOutput(); err != nil {
 			log.Errorf("Untar dis %s error %v", unTarFolderUrl, err)
 			return err
@@ -63,7 +68,7 @@ func CreateReadOnlyLayer(imageName string)  error {
 	return nil
 }
 
-
+//为每一个容器创建一个读写层， 容器的读写层修改成以 WriteLayerUrl + containerName 命名
 func CreateWriteLayer(containerName string){
 
 	//writeURL := rootURL + "writeLayer/"
@@ -75,6 +80,8 @@ func CreateWriteLayer(containerName string){
 	}
 }
 
+//创建容器的跟目录,然后把镜像只读层 和 容器读写层挂载到容器根目录，成为容器的文件系统
+//把通过镜像解压出来的只读层和容器的可读写层用AUFS联合挂载成为容器的文件系统
 func CreateMountPoint(containerName string, imageName string) error {
 
 	mntUrl := fmt.Sprintf(MntUrl, containerName)
@@ -108,6 +115,8 @@ func CreateMountPoint(containerName string, imageName string) error {
 	}*/
 }
 
+//根据用户输入的volume 参数获取相应要挂载的宿主机 数据卷URL 和容器中的挂载点URL， 并挂载数据卷
+//容器的挂载点改为 MntUrl + containerName + containerUrl 命令
 func MountVolume(volumeURLs []string, containerName string) error {
 
 	//读取宿主机文件目录 URL, 创建宿主机文件目录
@@ -158,7 +167,7 @@ func DeleteWorkSpace(volume string, containerName string){
 		volumeURLs := strings.Split(volume, ":")
 		length := len(volumeURLs)
 
-		if length == 2 && volumeURLs[0] != "" && volumeURLs[0] != "" {
+		if length == 2 && volumeURLs[0] != "" && volumeURLs[1] != "" {
 			DeleteMountPointWithVolume(volumeURLs, containerName)
 		}else {
 			DeleteMountPoint(containerName)

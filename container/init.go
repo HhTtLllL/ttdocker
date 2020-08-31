@@ -44,6 +44,7 @@ func RunContainerInitProcess() error {
 
 	//改动，调用 exec.LookPath，可以在系统的 PATH 里面寻找命令的绝对路径
 	// 举例： 如果输入的命令为 ls, LookPath  处理后的 为 /bin/ls 然后运行起来
+	fmt.Println("cmdArray = ", cmdArray[0]);
 	path, err := exec.LookPath(cmdArray[0])
 
 	if err != nil {
@@ -77,7 +78,7 @@ func readUserCommand() []string {
 	}
 
 	msgStr := string(msg)
-
+	fmt.Println("msgStr = ", msgStr)
 	return strings.Split(msgStr, " ")
 }
 

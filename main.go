@@ -23,6 +23,7 @@ func main(){
 		logCommand,
 		execCommand,
 		stopCommand,
+		removeCommand,
 	}
 
 

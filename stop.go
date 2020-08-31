@@ -5,6 +5,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
+	"os"
 	"ttdocker/container"
 	"strconv"
 	"syscall"
@@ -85,3 +86,32 @@ func getContainerInfoByName(containerName string) (* container.ContainerInfo, er
 
 	return &containerInfo, nil
 }
+
+
+func removeContainer(containerName string){
+
+	//根据荣启明获取容器对应的信息
+	containerInfo, err := getContainerInfoByName(containerName)
+	if err != nil {
+		log.Errorf("get container %s info error %v", containerName, err)
+		return
+	}
+
+	//只删除处于停止状态的容器
+	if containerInfo.Status != container.STOP{
+		log.Errorf("couldn't remove running container")
+		return
+	}
+
+	//找到对应存储容器信息的文件路径
+	dirURL := fmt.Sprintf(container.DefaultInfoLocation, containerName)
+	//将所有信息包括子目录都一出
+	if err := os.RemoveAll(dirURL); err != nil {
+		log.Errorf("remove file %s error %v", dirURL, err)
+		return
+	}
+
+	//删除工作环境
+	container.DeleteWorkSpace(containerInfo.Volume, containerName)
+}
+

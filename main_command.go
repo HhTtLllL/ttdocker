@@ -48,7 +48,12 @@ var runCommand = cli.Command{
 			Name: "name",
 			Usage: "container name",
 		},
+		cli.StringSliceFlag{
+			Name: "e",
+			Usage: "set enviornment",
+		},
 	},
+
 	/*
 		这里是 run 命令执行的真正函数
 		1.判断参数是否包含 command
@@ -69,11 +74,14 @@ var runCommand = cli.Command{
 
 			cmdArray = append(cmdArray, arg)
 		}
+		fmt.Println("main_command_ cmdArray = ", cmdArray)
 		//fmt.Println(context.Args())
 	//	cmd := context.Args().Get(0)
 		createTty := context.Bool("ti")
 		detach := context.Bool("d")
 		volume := context.String("v")
+		envSlice := context.StringSlice("e")
+
 
 		if createTty && detach {
 
@@ -91,7 +99,10 @@ var runCommand = cli.Command{
 		containerName := context.String("name")
 		fmt.Println("name = ", containerName)
 
-		Run(createTty, cmdArray,resConf, volume, containerName)
+		imageName := cmdArray[0]
+		cmdArray = cmdArray[1:]
+
+		Run(createTty, cmdArray,resConf, volume, containerName, imageName, envSlice)
 
 		return nil
 	},
@@ -117,13 +128,14 @@ var commitCommand = cli.Command{
 
 	Action: func(context *cli.Context) error {
 
-		if len(context.Args()) < 1 {
+		if len(context.Args()) < 2 {
 
 			return fmt.Errorf("missing container name")
 		}
-		imageName := context.Args().Get(0)
+		containerName := context.Args().Get(0)
+		imageName := context.Args().Get(1)
 
-		commitContainer(imageName)
+		commitContainer(containerName, imageName)
 
 		return nil
 	},
@@ -205,6 +217,22 @@ var stopCommand = cli.Command{
 
 		containerName := context.Args().Get(0)
 		stopContainer(containerName)
+
+		return nil
+	},
+}
+
+var removeCommand = cli.Command{
+	Name: "rm",
+	Usage: "remove unused containers",
+	Action: func(context *cli.Context) error {
+
+		if len(context.Args()) < 1 {
+			return fmt.Errorf("missing container name")
+		}
+
+		containerName := context.Args().Get(0)
+		removeContainer(containerName)
 
 		return nil
 	},

@@ -52,9 +52,7 @@ func ListContainers(){
 			item.Command,
 			item.CreatedTime)
 	}
-
 	//刷新标准输出流缓存区, 将容器里列表打印出来
-
 	if err := w.Flush(); err != nil {
 
 		log.Errorf("Flush error %v", err)
@@ -73,7 +71,6 @@ func getContainerInfo(file os.FileInfo) (* container.ContainerInfo, error) {
 
 	//读取config.json 文件内的容器信息
 	content, err := ioutil.ReadFile(configFileDir)
-
 	if err != nil {
 
 		log.Errorf("read file %s error %v", configFileDir, err)
@@ -82,7 +79,6 @@ func getContainerInfo(file os.FileInfo) (* container.ContainerInfo, error) {
 
 	var containerInfo container.ContainerInfo
 	//将json 文件信息反序列化成容器信息对象
-
 	if err := json.Unmarshal(content, &containerInfo); err != nil {
 
 		log.Errorf("Json umarshal error %v", err)
