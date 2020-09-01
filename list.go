@@ -19,6 +19,7 @@ func ListContainers(){
 	//读取文件夹下的所有内容
 	files, err := ioutil.ReadDir(dirURL)
 	if err != nil {
+
 		log.Errorf("Read idr %s error %v", dirURL, err)
 		return
 	}
@@ -30,6 +31,7 @@ func ListContainers(){
 		tmpContainer, err := getContainerInfo(file)
 
 		if err != nil {
+
 			log.Errorf("Get container info error %v", err)
 			continue
 		}

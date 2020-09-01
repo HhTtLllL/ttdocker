@@ -16,6 +16,7 @@ func stopContainer(containerName string){
 	//根据容器名获取对应的主进程 PID
 	pid, err := GetContainerPidByName(containerName)
 	if err != nil {
+	
 		log.Errorf("get container pid by name %s error %v", containerName, err)
 		return
 	}
@@ -38,6 +39,7 @@ func stopContainer(containerName string){
 	//根据容器名获取对应信息对象
 	containerInfo, err := getContainerInfoByName(containerName)
 	if err != nil{
+
 		log.Errorf("get container %s info error %v",err)
 	}
 
@@ -48,6 +50,7 @@ func stopContainer(containerName string){
 	//将修改后的信息序列化成 json 的字符串
 	newContentBytes, err := json.Marshal(containerInfo)
 	if err != nil {
+
 		log.Errorf("Json marshal %s error %v", containerName, err)
 		return
 	}
@@ -57,6 +60,7 @@ func stopContainer(containerName string){
 
 	//重新写入新的数据 覆盖原来的信息
 	if err := ioutil.WriteFile(configFilePath, newContentBytes, 0622); err != nil {
+
 		log.Errorf("write file %s error", configFilePath, err)
 	}
 
@@ -93,12 +97,14 @@ func removeContainer(containerName string){
 	//根据荣启明获取容器对应的信息
 	containerInfo, err := getContainerInfoByName(containerName)
 	if err != nil {
+
 		log.Errorf("get container %s info error %v", containerName, err)
 		return
 	}
 
 	//只删除处于停止状态的容器
 	if containerInfo.Status != container.STOP{
+
 		log.Errorf("couldn't remove running container")
 		return
 	}
@@ -107,6 +113,7 @@ func removeContainer(containerName string){
 	dirURL := fmt.Sprintf(container.DefaultInfoLocation, containerName)
 	//将所有信息包括子目录都一出
 	if err := os.RemoveAll(dirURL); err != nil {
+
 		log.Errorf("remove file %s error %v", dirURL, err)
 		return
 	}

@@ -18,6 +18,7 @@ func logContainer(containerName string ){
 	file, err := os.Open(logFileLocation)
 	defer file.Close()
 	if err != nil {
+
 		log.Errorf("log container open file %s error %v", logFileLocation, err)
 		return
 	}

@@ -19,6 +19,7 @@ func ExecContainer(containerName string, comArray []string){
 
 	pid, err := GetContainerPidByName(containerName)
 	if err != nil {
+
 		log.Errorf("exec container getcontainerPidByName %s error %v", containerName, err)
 		return
 	}
@@ -41,6 +42,7 @@ func ExecContainer(containerName string, comArray []string){
 	cmd.Env = append(os.Environ(), containerEnvs...)
 
 	if err := cmd.Run(); err != nil {
+
 		log.Errorf("exec container %s error %v", containerName, err)
 	}
 }
@@ -55,6 +57,7 @@ func GetContainerPidByName(containerName string) (string, error ){
 	//读取对应路径下的文件内容
 	contentBytes, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
+
 		return "", err
 	}
 
@@ -62,6 +65,7 @@ func GetContainerPidByName(containerName string) (string, error ){
 
 	//将文件内容反序列化成容器信息对象,然后返回对应的PID
 	if err := json.Unmarshal(contentBytes, &containerInfo); err != nil {
+
 		return "", err
 	}
 	fmt.Println("Pid = ", containerInfo.Pid)
@@ -75,6 +79,7 @@ func getEnvsByPid(pid string)[]string {
 	contengBytes, err := ioutil.ReadFile(path)
 
 	if err != nil {
+
 		log.Errorf("Read file %s error %v", path, err)
 		return nil
 	}
