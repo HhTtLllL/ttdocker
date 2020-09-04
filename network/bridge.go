@@ -40,38 +40,63 @@ func (d *BridgeNetworkDriver) Create(subnet string, name string) (*Network, erro
 	//返回配置好的网络
 	return n, err
 }
-
+/*
+	输入的是网络对象, 执行时会删除网络所对应的网络设备, 而在Bridge Driver 中, 就是删除网络对应的Linux Bridge的设备.
+*/
 func (d * BridgeNetworkDriver) Delete(network Network) error {
+	//网络名即Linux Bridge 的设备名
 	bridgeName := network.Name
+	//通过netlink库的LinkByName 找到对应的seeing
 	br, err := netlink.LinkByName(bridgeName)
 	if err != nil {
 		return err
 	}
+
+	//删除网络对应的 Linux Bridge 设备
 
 	return netlink.LinkDel(br)
 }
 
+//连接容器网络端点到Linux Bridge,   连接一个网络和网络端点
+/*
+	通过调用Connect 的方法,容器的网络端点已经挂载到了Bridge 网络的 Linux Bridge
+*/
+
 func (d *BridgeNetworkDriver) Connect (network *Network, endpoint *Endpoint) error {
 
+	//获取网络名, 即linux Bridge 的接口名
 	bridgeName := network.Name
+	//通过接口名获取到linux Bridge 接口的对象的接口属性
 	br, err := netlink.LinkByName(bridgeName)
 	if err != nil {
 		return err
 	}
 
+	//创建Veth 接口的配置
 	la := netlink.NewLinkAttrs()
+	//由于Linux 接口名的限制, 名字取endpoint ID 的前五位
 	la.Name = endpoint.ID[:5]
+
+	//通过设置Veth接口的master属性, 设置这个Veth 的一端挂载到网络对应的Linux Bridge 上
 	la.MasterIndex = br.Attrs().Index
 
+	//创建Veth 对象, 通过PeerName 配置Veth另外一端的接口名
+	//配置Veth 另外一端的名字 cif - {endpoint ID 的前5位}
 	endpoint.Device = netlink.Veth{
 		LinkAttrs: la,
 		PeerName: "cif-" + endpoint.ID[:5],
 	}
 
+	/*
+		调用netlink 的LinkAdd 方法创建出这个 Veth 接口
+		因为上面指定了link 的MasterIndex 是网络对应的Linux Bridge, 所以Veth的一端就已经挂载到了网络对应的Linux Bridge 上
+	*/
 	if err = netlink.LinkAdd(&endpoint.Device); err != nil {
 		return fmt.Errorf("error add endpoint device :#{err} ")
 	}
 
+	//调用netlink 的LinkSetUp 方法, 设置Veth启动
+	//相当于 ip link set xxx up 的命令
 	if err = netlink.LinkSetUp(&endpoint.Device); err != nil {
 		return fmt.Errorf("error add endpoint device:#{err}")
 	}
@@ -167,6 +192,10 @@ func createBridgeInterface(bridgeName string) error {
 
 }
 
+//设置网络接口为UP 状态
+/*
+	Linux 的网络设备只有设置成UP 状态后才能处理和转发请求. 通过netlnk 的LinkSetUp方法, 将创建的Linux Bridge 设置成UP状态
+*/
 func setInterfaceUP(interfaceName string) error {
 
 	iface, err := netlink.LinkByName(interfaceName)
@@ -174,6 +203,8 @@ func setInterfaceUP(interfaceName string) error {
 		return fmt.Errorf("Error retrieving a link named [ %s ]: %v", iface.Attrs().Name, err)
 	}
 
+	//通过"netlink" 的LinkSetUp 方法设置接口状态为Up状态
+	//等价于 ip link set xxx up 命令
 	if err := netlink.LinkSetUp(iface); err != nil {
 
 		return fmt.Errorf("Error enabling interface for %s : %v", interfaceName, err)
@@ -185,6 +216,7 @@ func setInterfaceUP(interfaceName string) error {
 
 // 设置Bridge 设备的地址和路由
 // Set the IP addr of a netlink interface
+//设置一个网络接口的IP地址,  力图 setinterfaceIP("testbridge, "192.168.0.1/24")
 func setInterfaceIP(name string, rawIP string) error {
 	retries := 2;
 
@@ -192,6 +224,7 @@ func setInterfaceIP(name string, rawIP string) error {
 	var err error
 
 	for i := 0; i < retries; i ++ {
+		//通过 netlink 的LinkByName 方法找到需要设置的网络接口
 		iface, err = netlink.LinkByName(name)
 		if err == nil {
 			break
@@ -205,11 +238,22 @@ func setInterfaceIP(name string, rawIP string) error {
 
 		return fmt.Errorf("Abandoning retrieving the new bridge link from netlink, Run [ ip link ] to troubleshoot the error: %v", err)
 	}
-
+	/*
+		由于 netlink.ParseIPNet 是对net.ParesCIDR 的一个封装, 因此可以将net.ParseCIDR 的返回值中的IP 和 net 整合
+		返回值中的ipNet既包含了网段的信息, 192.168.0.0/24 也包含了原始的ip 192.168.0.1
+	*/
 	ipNet, err := netlink.ParseIPNet(rawIP)
 	if err != nil {
 		return err
 	}
+
+	/*
+		通过netlink.AddrAdd 个网络接口配置地址, 相当于 ip addr add xxx 的命令
+		同时如果配置了地址所在网段的信息, 例如192.168.0.0/24
+		还回配置路由表 192.168.0.0/24 转发到这个  testbridge 的网络接口上面
+
+		通过调用 netlink 的AddrAdd方法,配置Linux Bridge 的地址和路由表
+	*/
 
 	addr := &netlink.Addr{ ipNet, "", 0, 0, nil}
 
@@ -217,15 +261,27 @@ func setInterfaceIP(name string, rawIP string) error {
 }
 
 
+/*
+	设置 iptables Linux SNAT 规则
 
+	通过直接执行iptables 命令,创建 SNAT规则, 只要是从这个网桥上出来的包, 都会对其做源IP的转换,
+	保证了容器经过宿主机访问到宿主机外部网络请求的包转换成机器IP, 从而能正确的送达和接受
+*/
 
 func setupIPTables(bridgeName string, subnet *net.IPNet) error {
+	/*
+		由于Go语言没有直接操控 iptables 操作的库, 所以需要通过命令的方式来配置
+		创建iptables 的命令
+
+		iptables -t nat -A POSTROUTING  -s <bridgeName> ! -o <bridgeName> -j MASQUERADE
+	*/
 	iptablesCmd := fmt.Sprintf("-t nat -A POSTROUTING -s %s ! -o %s -j MASQUERADE", subnet.String(), bridgeName)
 	cmd := exec.Command("iptables", strings.Split(iptablesCmd, " ")...)
-
+	//执行 iptables 命令配置 SNAT 规则
 	output, err := cmd.Output()
 	if err != nil {
 		log.Errorf("iptables Output, %v", output)
 	}
-	return err
+
+	return nil
 }
