@@ -3,8 +3,8 @@ package subsystems
 //用于传递资源限制配置的结构体，包含内存限制，cup 时间权重， cpu 核心数
 type ResourceConfig struct {
 	MemoryLimit string
-	CpuShare string
-	CpuSet string
+	CpuShare 	string
+	CpuSet 		string
 }
 
 //Subsystem 借口， 每个Subsystem 借口可以实现下面的四个接口
