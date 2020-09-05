@@ -9,26 +9,27 @@ import (
 )
 //一个容器的基本信息
 type ContainerInfo struct {
-	Pid string `json:"pid"`   //容器的init进程在 宿主机上的　PID
-	Id string `json:"id"`		// 容器ID
-	Name string `json:"name"`  // 容器名
-	Command string `json:"command"` //容器内init 进程的运行命令
+	Pid 		string `json:"pid"`   //容器的init进程在 宿主机上的　PID
+	Id 			string `json:"id"`		// 容器ID
+	Name 		string `json:"name"`  // 容器名
+	Command 	string `json:"command"` //容器内init 进程的运行命令
 	CreatedTime string `json:"createTime"` //创建时间
-	Status string `json:"status"`    //容器的状态
-	Volume string `json:"volume"`
+	Status 		string `json:"status"`    //容器的状态
+	Volume 		string `json:"volume"`   //容器的数据卷
+	PortMapping []string `json:"portmapping"`  //端口映射
 }
 
 // 状态  全局变量
 var (
-	RUNNING string = "running"
-	STOP string = "stopped"
-	Exit string = "exited"
+	RUNNING 			string = "running"
+	STOP 				string = "stopped"
+	Exit 				string = "exited"
 	DefaultInfoLocation string = "/var/run/ttdocker/%s/"
-	ConfigName  string = "config.json"
-	ContainerLogFile string = "container.log"
-	RootUrl string = "/root"
-	MntUrl string = "/root/mnt/%s"
-	WriteLayerUrl string = "/root/writeLayer/%s"
+	ConfigName  		string = "config.json"
+	ContainerLogFile 	string = "container.log"
+	RootUrl 			string = "/root"
+	MntUrl 				string = "/root/mnt/%s"
+	WriteLayerUrl 		string = "/root/writeLayer/%s"
 
 )
 
