@@ -22,7 +22,9 @@ var (
 	drivers 		   = map[string]NetworkDriver{}
 	networks  		   = map[string]*Network{}
 )
-
+/*
+网络端点是用来连接容器与网络的, 保证容器内部与网络的通信
+*/
 type Endpoint struct {
 	ID 				string `json:"id"`
 	Device 			netlink.Veth `json:"dev"`
@@ -32,6 +34,13 @@ type Endpoint struct {
 	PortMapping 	[]string                         //端口映射
 }
 
+/*
+网络的抽象
+网络是容器的一个集合在这个网络上的容器可以通过这个网络互相通信，就像挂载到同
+一个 Linux Bridge 设备上的网络设备一样，可以直接通过 Bridge 设备实现网络互连 ； 连接到同
+一个网络中的容器也可 以通过这个网络和网络中别的容器互连 。 网络中会包括这个网络相关的
+配置，比如网络的容器地址段、网络操作所调用的网络驱动等信息 。
+*/
 type Network struct {
 	Name 		string         //网络名
 	IpRange 	*net.IPNet     //地址段
@@ -39,7 +48,10 @@ type Network struct {
 }
 
 
-//网络驱动
+/*
+网络驱动
+网络驱动是一个网络功能中的组件,
+*/
 type NetworkDriver interface {
 	 Name() string												//驱动名
 	 Create(subnet string, name string) (*Network, error)		//创建网络
@@ -186,7 +198,6 @@ func Init() error{
 
 //创建网络
 func CreateNetwork(driver string, subnet string, name string) error {
-
 	//ParseCIDR 是 Golang net 包的函数， 功能是将网段的字符转换成 net.IPNet 的对象
 	/*
 		func ParseCIDR(s string) (IP, *IPNet, error)
@@ -196,8 +207,6 @@ func CreateNetwork(driver string, subnet string, name string) error {
 		ParseCIDR 将 s 作为一个CIDR 的IP地址和掩码字符窜
 	*/
 	_, cidr, _ := net.ParseCIDR(subnet)
-	//通过IPAM分配网关 IP, 获取到网段中第一个IP作为网关的IP
-
 	//通过IPAM分配网关IP， 获取到网段中第一个IP作为网关的IP，
 	gatewayIp, err := ipAllocator.Allocate(cidr)
 	if err != nil {
@@ -208,6 +217,7 @@ func CreateNetwork(driver string, subnet string, name string) error {
 
 	//调用指定的网络驱动创建网络， 这里的drivers 字典是各个网络驱动的实例字典,通过调用网络驱动的
 	//Create 方法创建网络， 后面会议 Bridge 驱动为例，介绍它的实现
+	//drivers[driver] 返回的是一个 NetDriver 网络驱动, 网络驱动创建一个网络   nw
 	nw, err := drivers[driver].Create(cidr.String(), name)
 	if err != nil {
 
@@ -215,7 +225,6 @@ func CreateNetwork(driver string, subnet string, name string) error {
 	}
 
 	//保存网络信息， 将网络的信息保存在文件系统中， 以便查询和在网络上连接网络端点
-
 	return nw.dump(defaultNetworkPath)
 }
 
