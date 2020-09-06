@@ -147,6 +147,7 @@ func Init() error{
 
 	//加载网络驱动
 	var bridgeDriver = BridgeNetworkDriver{}
+	//drivers[bridge]
 	drivers[bridgeDriver.Name()] = &bridgeDriver
 
 	//判断网络的配置目录是否存在，不存在则创建
@@ -164,15 +165,22 @@ func Init() error{
 	filepath.Walk(defaultNetworkPath, func(nwPath string, info os.FileInfo, err error) error {
 
 		//如果是目录则跳过
-		if info.IsDir() {
+		/*if info.IsDir() {
 			return nil
-		}
+		}*/
 
+		//func HasSuffix(s, suffix string) bool
+		//判断 s 串中是否包含 suffix 子串
+		//如果是目录则跳过
 		if strings.HasSuffix(nwPath, "/"){
 			return nil
 		}
 
-		//加载文件名作为网段名
+		//加载文件名作为网络名
+		//func Split(path string) (dir, file string)
+		//Split函数将路径从最后一个斜杠后面位置分隔为两个部分（dir和file） 并返回。
+		//如果路径中没有斜杠，函数返回值dir会设为空字符串，
+		//file会设为path。两个返回值满足path == dir+file。
 		_, nwName := path.Split(nwPath)
 		nw := &Network{
 			Name: nwName,
@@ -196,7 +204,7 @@ func Init() error{
 
 
 
-//创建网络
+//创建网络 			bridge        192.168.0.0/24    testbridge
 func CreateNetwork(driver string, subnet string, name string) error {
 	//ParseCIDR 是 Golang net 包的函数， 功能是将网段的字符转换成 net.IPNet 的对象
 	/*
@@ -228,7 +236,7 @@ func CreateNetwork(driver string, subnet string, name string) error {
 	return nw.dump(defaultNetworkPath)
 }
 
-// init 已经把网络配置目录中的所有配置文件加载到了networks 字典中
+// init()已经把网络配置目录中的所有配置文件加载到了networks 字典中
 //这里只需要通过遍历这个字典来展示创建的网络
 func ListNetwork() {
 	// 通过前面 ttdocker ps 时介绍的tabwriter 的库去展示网络
@@ -250,7 +258,11 @@ func ListNetwork() {
 		return
 	}
 }
-
+/*
+	删除网络,网关IP
+	删除网络对应的网络设备
+	删除网络配置文件
+*/
 func DeleteNetwork(networkName string) error {
 
 	//查找网络是否存在

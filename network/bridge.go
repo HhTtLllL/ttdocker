@@ -168,9 +168,11 @@ func (d *BridgeNetworkDriver)deleteBridge(n *Network) error {
 func createBridgeInterface(bridgeName string) error {
 
 	//先检查是否已经存在了同名的Bridge 设备
+
+	//InterfaceByName --- InterfaceByName返回指定名字的网络接口。
 	_, err := net.InterfaceByName(bridgeName)
 	//如果存在或者报错则返回创建错误
-	if err == nil || !strings.Contains(err.Error(), "no such network interface ----"){
+	if err == nil || !strings.Contains(err.Error(), "no such network interface"){
 
 		return err
 	}
