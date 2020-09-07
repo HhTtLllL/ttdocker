@@ -291,8 +291,9 @@ func DeleteNetwork(networkName string) error {
 
 	将容器的网络端点加入到容器的网络空间中
 	并锁定当前程序所执行的线程, 使当前线程进入到容器的网络空间
-	返回值是一个含税指针, 执行这个返回函数才会退出容器的网络空间, 回归到宿主机的网络空间
+	返回值是一个函数指针, 执行这个返回函数才会退出容器的网络空间, 回归到宿主机的网络空间
 */
+// enLink  为 peerLink
 func enterContainerNetns(enLink *netlink.Link, cinfo *container.ContainerInfo) func() {
 
 	/*
@@ -300,7 +301,6 @@ func enterContainerNetns(enLink *netlink.Link, cinfo *container.ContainerInfo) f
 		/proc/[pid]/ns/net 打开这个文件的文件描述符就可以来操作Net Namespace
 		而 containerInfo 中的PID, 即容器在宿主机上映射的进程ID
 		它对应的/proc/[pid]/ns/net 就是容器内部的Net Namespace
-
 	*/
 	f, err := os.OpenFile(fmt.Sprintf("/proc/%s/ns/net", cinfo.Pid), os.O_RDONLY, 0)
 	if err != nil {

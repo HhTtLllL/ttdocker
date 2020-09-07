@@ -59,9 +59,12 @@ func (d * BridgeNetworkDriver) Delete(network Network) error {
 
 //连接容器网络端点到Linux Bridge,   连接一个网络和网络端点
 /*
+先将 Veth 的一端先和 Bridge 连接.
+然后再用这一端 和 另外一端连接, 然后再把另外一端移入 namespace
+*/
+/*
 	通过调用Connect 的方法,容器的网络端点已经挂载到了Bridge 网络的 Linux Bridge
 */
-
 func (d *BridgeNetworkDriver) Connect (network *Network, endpoint *Endpoint) error {
 
 	//获取网络名, 即linux Bridge 的接口名
@@ -75,21 +78,25 @@ func (d *BridgeNetworkDriver) Connect (network *Network, endpoint *Endpoint) err
 	//创建Veth 接口的配置
 	la := netlink.NewLinkAttrs()
 	//由于Linux 接口名的限制, 名字取endpoint ID 的前五位
-	la.Name = endpoint.ID[:5]
+	la.Name = endpoint.ID[:5] // 12345
 
 	//通过设置Veth接口的master属性, 设置这个Veth 的一端挂载到网络对应的Linux Bridge 上
+	//MasterIndex  must be the index of a bridge
+	// 等价于 ip link set dev endpoint.ID[:5] master testbridge
 	la.MasterIndex = br.Attrs().Index
 
 	//创建Veth 对象, 通过PeerName 配置Veth另外一端的接口名
 	//配置Veth 另外一端的名字 cif - {endpoint ID 的前5位}
 	endpoint.Device = netlink.Veth{
-		LinkAttrs: la,
-		PeerName: "cif-" + endpoint.ID[:5],
+		LinkAttrs: la,    //Veth 一端的接口名
+		PeerName: "cif-" + endpoint.ID[:5],    //Veth 另外一端的接口名
 	}
 
 	/*
 		调用netlink 的LinkAdd 方法创建出这个 Veth 接口
 		因为上面指定了link 的MasterIndex 是网络对应的Linux Bridge, 所以Veth的一端就已经挂载到了网络对应的Linux Bridge 上
+		== ip link add endpoint.ID[:5] type veth peer name cif-12345
+		在这里创建出一对 Veth
 	*/
 	if err = netlink.LinkAdd(&endpoint.Device); err != nil {
 		return fmt.Errorf("error add endpoint device :#{err} ")
@@ -97,6 +104,7 @@ func (d *BridgeNetworkDriver) Connect (network *Network, endpoint *Endpoint) err
 
 	//调用netlink 的LinkSetUp 方法, 设置Veth启动
 	//相当于 ip link set xxx up 的命令
+	// == ip link set 12345 up
 	if err = netlink.LinkSetUp(&endpoint.Device); err != nil {
 		return fmt.Errorf("error add endpoint device:#{err}")
 	}
@@ -165,10 +173,9 @@ func (d *BridgeNetworkDriver)deleteBridge(n *Network) error {
 
 
 //创建Linux Bridge 设备
+// ip link add name testbridge type bridge
 func createBridgeInterface(bridgeName string) error {
-
 	//先检查是否已经存在了同名的Bridge 设备
-
 	//InterfaceByName --- InterfaceByName返回指定名字的网络接口。
 	_, err := net.InterfaceByName(bridgeName)
 	//如果存在或者报错则返回创建错误
@@ -179,19 +186,19 @@ func createBridgeInterface(bridgeName string) error {
 
 	//初始化一个 netlink 的Linux基础对象, Link的名字即Bridge虚拟设备的名字
 	//create *netlink.Bridge object
+	//创建新的 连接属性  接口的配置
 	la := netlink.NewLinkAttrs()
 	la.Name = bridgeName
 	//使用刚才创建的 Link 的属性创建 netlink 的Bridge 对象
 	br := &netlink.Bridge{la}
 	//调用netlink的Linkadd方法, 创建 Bridge虚拟网络设备
-	// netlink 的Linkadd 方法是用啦床架你虚拟网络设备的 相当于 ip link add xxxx
+	// netlink 的Linkadd 方法是用来创建虚拟网络设备的 相当于 ip link add xxxx
 	if err := netlink.LinkAdd(br); err != nil {
 
 		return fmt.Errorf("Bridge creation failed for bridge %s : %v", bridgeName, err)
 	}
 
 	return nil
-
 }
 
 //设置网络接口为UP 状态
@@ -207,6 +214,7 @@ func setInterfaceUP(interfaceName string) error {
 
 	//通过"netlink" 的LinkSetUp 方法设置接口状态为Up状态
 	//等价于 ip link set xxx up 命令
+	// ip link set testbridge up
 	if err := netlink.LinkSetUp(iface); err != nil {
 
 		return fmt.Errorf("Error enabling interface for %s : %v", interfaceName, err)
@@ -219,6 +227,8 @@ func setInterfaceUP(interfaceName string) error {
 // 设置Bridge 设备的地址和路由
 // Set the IP addr of a netlink interface
 //设置一个网络接口的IP地址,  力图 setinterfaceIP("testbridge, "192.168.0.1/24")
+// 设置网桥地址
+//等于 ip addr add
 func setInterfaceIP(name string, rawIP string) error {
 	retries := 2;
 
@@ -227,6 +237,7 @@ func setInterfaceIP(name string, rawIP string) error {
 
 	for i := 0; i < retries; i ++ {
 		//通过 netlink 的LinkByName 方法找到需要设置的网络接口
+		//根据名字找到设备
 		iface, err = netlink.LinkByName(name)
 		if err == nil {
 			break
@@ -253,12 +264,11 @@ func setInterfaceIP(name string, rawIP string) error {
 		通过netlink.AddrAdd 个网络接口配置地址, 相当于 ip addr add xxx 的命令
 		同时如果配置了地址所在网段的信息, 例如192.168.0.0/24
 		还回配置路由表 192.168.0.0/24 转发到这个  testbridge 的网络接口上面
-
 		通过调用 netlink 的AddrAdd方法,配置Linux Bridge 的地址和路由表
 	*/
-
 	addr := &netlink.Addr{ ipNet, "", 0, 0, nil}
 
+	//等价于 ip addr 192.xxx.xxx.xxx/24 dev testbridge
 	return netlink.AddrAdd(iface, addr)
 }
 
@@ -270,6 +280,7 @@ func setInterfaceIP(name string, rawIP string) error {
 	保证了容器经过宿主机访问到宿主机外部网络请求的包转换成机器IP, 从而能正确的送达和接受
 */
 
+//设置路由
 func setupIPTables(bridgeName string, subnet *net.IPNet) error {
 	/*
 		由于Go语言没有直接操控 iptables 操作的库, 所以需要通过命令的方式来配置
