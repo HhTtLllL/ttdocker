@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	defaultNetworkPath = "/var/run/ttdocker/network/network"
+	defaultNetworkPath = "/var/run/ttdocker/network/network/"
 	drivers 		   = map[string]NetworkDriver{}
 	networks  		   = map[string]*Network{}
 )
@@ -103,19 +103,24 @@ func (nw *Network) dump (dumpPath string) error {
 //从网络的配置目录中的文件读取到网络的配置， 以便网络查询及在这个网络上连接网络端点
 func (nw *Network) load(dumpPath string) error {
 	//打开配置文件
+	fmt.Println("准备打开文件")
 	nwConfigFile, err := os.Open(dumpPath)
+	fmt.Println("dumppath = ", dumpPath)
 	defer nwConfigFile.Close()
 	if err != nil {
 
 		return err
 	}
+	fmt.Println("开始加载文件")
 	//从配置文件中读取网络的配置json 字符串
 	nwJson := make([]byte, 2000)
 	n, err := nwConfigFile.Read(nwJson)
 	if err != nil {
+		fmt.Println("加载文件失败")
 		return err
 	}
 
+	fmt.Println("转化json串")
 	//通过json 字符串反序列化出网络
 	err = json.Unmarshal(nwJson[:n], nw)
 	if err != nil {
@@ -123,6 +128,7 @@ func (nw *Network) load(dumpPath string) error {
 		return err
 	}
 
+	fmt.Println("成功加载文件")
 	return nil
 }
 func (nw *Network) remove(dumpPath string) error {
@@ -144,13 +150,14 @@ func (nw *Network) remove(dumpPath string) error {
 
 
 func Init() error{
-
+	fmt.Println("开始init")
 	//加载网络驱动
 	var bridgeDriver = BridgeNetworkDriver{}
 	//drivers[bridge]
 	drivers[bridgeDriver.Name()] = &bridgeDriver
 
 	//判断网络的配置目录是否存在，不存在则创建
+	fmt.Println("default = ", defaultNetworkPath)
 	if _, err := os.Stat(defaultNetworkPath); err != nil {
 		if os.IsNotExist(err){
 			os.MkdirAll(defaultNetworkPath, 0644)
