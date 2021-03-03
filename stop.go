@@ -16,7 +16,7 @@ func stopContainer(containerName string){
 	//根据容器名获取对应的主进程 PID
 	pid, err := GetContainerPidByName(containerName)
 	if err != nil {
-	
+
 		log.Errorf("get container pid by name %s error %v", containerName, err)
 		return
 	}
@@ -43,7 +43,7 @@ func stopContainer(containerName string){
 		log.Errorf("get container %s info error %v",err)
 	}
 
-	//至此，容器进程已经被kll， 所以下面需要修改容器状态，PID可以置为空
+	//至此，容器进程已经被kill， 所以下面需要修改容器状态，PID可以置为空
 	containerInfo.Status = container.STOP
 	containerInfo.Pid = " "
 
@@ -57,7 +57,6 @@ func stopContainer(containerName string){
 
 	dirURL := fmt.Sprintf(container.DefaultInfoLocation, containerName)
 	configFilePath := dirURL + container.ConfigName
-
 	//重新写入新的数据 覆盖原来的信息
 	if err := ioutil.WriteFile(configFilePath, newContentBytes, 0622); err != nil {
 

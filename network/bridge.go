@@ -15,6 +15,7 @@ type BridgeNetworkDriver struct {
 }
 
 func (d *BridgeNetworkDriver) Name () string {
+
 	return "bridge"
 }
 
@@ -35,6 +36,7 @@ func (d *BridgeNetworkDriver) Create(subnet string, name string) (*Network, erro
 	//配合Linux Bridge
 	err := d.initBridge(n)
 	if err != nil {
+
 		log.Errorf("error init beidge: %v", err)
 	}
 	//返回配置好的网络
@@ -44,16 +46,17 @@ func (d *BridgeNetworkDriver) Create(subnet string, name string) (*Network, erro
 	输入的是网络对象, 执行时会删除网络所对应的网络设备, 而在Bridge Driver 中, 就是删除网络对应的Linux Bridge的设备.
 */
 func (d * BridgeNetworkDriver) Delete(network Network) error {
+	fmt.Println("删除 Bridge")
 	//网络名即Linux Bridge 的设备名
 	bridgeName := network.Name
 	//通过netlink库的LinkByName 找到对应的seeing
 	br, err := netlink.LinkByName(bridgeName)
 	if err != nil {
+
 		return err
 	}
 
 	//删除网络对应的 Linux Bridge 设备
-
 	return netlink.LinkDel(br)
 }
 
@@ -232,7 +235,6 @@ func setInterfaceUP(interfaceName string) error {
 func setInterfaceIP(name string, rawIP string) error {
 	retries := 2;
 	
-
 	var iface netlink.Link
 	var err error
 
@@ -291,9 +293,7 @@ func setupIPTables(bridgeName string, subnet *net.IPNet) error {
 	*/
 	//POSTROUNTING 路由后
 	//-s  指定作为源地址匹配, 不能执行主机名称, 必须是IP, ! 表示除这个IP外
-	//iptablesCmd := fmt.Sprintf("-t nat -A POSTROUTING -s %s ! -o %s -j MASQUERADE", subnet.String(), bridgeName)
-	iptablesCmd := fmt.Sprintf("-t nat -A POSTROUTING -s %s ! -o %s -j SNAT --to-source 192.168.30.214", subnet.String(), bridgeName)
-	//iptablesCmd := fmt.Sprintf("-t nat -A POSTROUTING -s %s ! -o %s -j MASQUERADE", bridgeName, bridgeName)
+	iptablesCmd := fmt.Sprintf("-t nat -A POSTROUTING -s %s ! -o %s -j MASQUERADE", subnet.String(), bridgeName)
 	cmd := exec.Command("iptables", strings.Split(iptablesCmd, " ")...)
 	//执行 iptables 命令配置 SNAT 规则
 	output, err := cmd.Output()

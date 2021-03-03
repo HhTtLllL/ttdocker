@@ -54,7 +54,6 @@ func GetCgroupPath(subsystem string, cgroupPath string, autoCreate bool) (string
 		举例： memory  首先要进入当前 hierarchy, 就是进入当前manager 对应的的目录，这个目录在run 期间已经建立，名为 mydaocker-cgroup
 			然后就是在 下面创建 memory.limit_in_bytes 这个文件，然后把限制资源的 大小写入文件中就星
 	*/
-	//fmt.Println("cgrouproot = ", cgroupRoot)
 	//stat返回一个描述name指定的文件对象的FileInfo。,如果不存在，根据autocreate 创建一个
 	cgroupRoot := FindCgroupMountpoint(subsystem)
 

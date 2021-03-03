@@ -13,19 +13,22 @@ import (
 //为每个容器创建文件系统
 func NewWorkSpace(volume string, imageName string, containerName string){
 
+	//根据用户输入的镜像为每个容器创建只读层
 	CreateReadOnlyLayer(imageName)  //新建busybox 文件夹，将busybox.tar 解压到 busybox 目录下，作为容器的只读层
+	//为每个容器创建出一个可写层
 	CreateWriteLayer(containerName)    //创建了一个名为 writeLayer　的文件夹，　作为容器唯一的可写层
+	//创建容器的根目录，然后把镜像层的只读层和容器读写层挂载到容器根目录，成为容器的文件系统
 	CreateMountPoint(containerName, imageName) //创建了mnt 文件，作为挂载点，然后啊writeLayer目录和busybox 目录mount 到 mnt 目录下
 
 	if volume != "" {
 
 		//解析volume 串
-	//	volumeURLs := volumeUrlExtract(volume)
-		volumeURLs := strings.Split(volume, ":")
+		volumeURLs := volumeUrlExtract(volume)
 		length := len(volumeURLs)
 
 		if length == 2 && volumeURLs[0] != "" && volumeURLs[1] != "" {
 
+			//根据用户输入的volume参数获取相应要挂载的宿主机数据卷URL和容器中的挂载点URL，并挂载数据卷。
 			MountVolume(volumeURLs, containerName)
 			log.Infof("newworkspace %q", volumeURLs)
 		}else {
@@ -38,8 +41,6 @@ func NewWorkSpace(volume string, imageName string, containerName string){
 // 根据用户输入的镜像为每个容器创建只读层。 镜像解压出来的只读层以RootUrl + imageName 命名
 //根据tar 格式的镜像文件作为只读层
 func CreateReadOnlyLayer(imageName string)  error {
-	/*busyboxURL := rootURL + "busybox/"
-	busyboxTarURL := rootURL + "busyox.tar"*/
 
 	unTarFolderUrl := RootUrl + "/" + imageName + "/"
 	imageUrl := RootUrl + "/" + imageName + ".tar"
@@ -47,6 +48,7 @@ func CreateReadOnlyLayer(imageName string)  error {
 	//判断这个 busybox 目录是否存在
 	exist, err := PathExists(unTarFolderUrl)
 	if err != nil {
+
 		log.Infof("Fail to judge whether dir %s exists %v", unTarFolderUrl, err)
 		return err
 	}
@@ -54,12 +56,14 @@ func CreateReadOnlyLayer(imageName string)  error {
 	if !exist {
 		//如果目录不错在就创建这个目录
 		if err := os.MkdirAll(unTarFolderUrl, 0622); err != nil {
+
 			log.Errorf("mkdir dis %s error %v", unTarFolderUrl, err)
 			return err
 		}
 
 		//解压
 		if _, err := exec.Command("tar", "-xvf", imageUrl, "-C", unTarFolderUrl).CombinedOutput(); err != nil {
+
 			log.Errorf("Untar dis %s error %v", unTarFolderUrl, err)
 			return err
 		}
@@ -70,8 +74,6 @@ func CreateReadOnlyLayer(imageName string)  error {
 
 //为每一个容器创建一个读写层， 容器的读写层修改成以 WriteLayerUrl + containerName 命名
 func CreateWriteLayer(containerName string){
-
-	//writeURL := rootURL + "writeLayer/"
 
 	writeURL := fmt.Sprintf(WriteLayerUrl, containerName)
 	if err := os.MkdirAll(writeURL, 0777); err != nil {
@@ -93,26 +95,17 @@ func CreateMountPoint(containerName string, imageName string) error {
 	tmpWriteLayer := fmt.Sprintf(WriteLayerUrl, containerName)
 	tmpImageLocation := RootUrl + "/" + imageName
 	mntURL := fmt.Sprintf(MntUrl, containerName)
-
 	dirs := "dirs=" + tmpWriteLayer + ":" + tmpImageLocation
 
+	//把通过镜像解压出来的只读层和容器的可读写层用aufs联合挂载称为容器的文件系统。
 	_, err := exec.Command("mount", "-t", "aufs", "-o", dirs, "none", mntURL).CombinedOutput()
-
 	if err != nil {
+
 		log.Errorf("mount volume failed. %v", err)
 		return err
 	}
 
 	return nil
-
-	/*
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr;
-
-	//执行 command 命令
-	if err := cmd.Run(); err != nil {
-		log.Errorf("%v", err)
-	}*/
 }
 
 //根据用户输入的volume 参数获取相应要挂载的宿主机 数据卷URL 和容器中的挂载点URL， 并挂载数据卷
@@ -140,19 +133,10 @@ func MountVolume(volumeURLs []string, containerName string) error {
 	//最后把宿主机文件目录挂载到容器挂载点，　这样启动容器的过程，对数据卷的处理也就完成了
 	_, err := exec.Command("mount", "-t", "aufs", "-o", dirs, "none", containerVolumeURL).CombinedOutput()
 	if err != nil {
+
 		log.Errorf("mount volume failed. %v", err)
 		return err
 	}
-
-	/*
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-
-		log.Errorf("mount volume failed. %v", err)
-	}
-*/
 
 	return nil
 }
@@ -168,11 +152,14 @@ func DeleteWorkSpace(volume string, containerName string){
 		length := len(volumeURLs)
 
 		if length == 2 && volumeURLs[0] != "" && volumeURLs[1] != "" {
+
 			DeleteMountPointWithVolume(volumeURLs, containerName)
 		}else {
+
 			DeleteMountPoint(containerName)
 		}
 	}else {
+
 		DeleteMountPoint(containerName)
 	}
 
@@ -185,6 +172,7 @@ func DeleteMountPoint(containerName string) error {
 	mntURL := fmt.Sprintf(MntUrl, containerName)
 	_, err := exec.Command("umount", mntURL).CombinedOutput()
 	if err != nil {
+
 		log.Errorf("unmount %s error %v", mntURL, err)
 		return err
 	}
@@ -212,6 +200,7 @@ func DeleteMountPointWithVolume(volumeURLs []string, containerName string) error
 	containerUrl := mntURL + "/" + volumeURLs[1]
 	//卸载volume挂载点的文件系统，　保证整个容器的挂载点没有被使用
 	if _, err := exec.Command("umount", containerUrl).CombinedOutput(); err != nil {
+
 		log.Errorf("umount volume %s failed. %v", containerUrl, err)
 		return err
 	}
@@ -219,7 +208,7 @@ func DeleteMountPointWithVolume(volumeURLs []string, containerName string) error
 	//卸载整个容器文件系统的挂载点
 	if _, err := exec.Command("umount", mntURL).CombinedOutput(); err != nil {
 
-		log.Errorf("mount mountPoint %s failed. %v", mntURL, err)
+		log.Errorf("umount mountPoint %s failed. %v", mntURL, err)
 		return err
 	}
 
@@ -231,8 +220,6 @@ func DeleteMountPointWithVolume(volumeURLs []string, containerName string) error
 
 	return nil
 }
-
-
 
 func PathExists(path string ) (bool, error ){
 
@@ -250,7 +237,5 @@ func PathExists(path string ) (bool, error ){
 //解析volume 字符串
 func volumeUrlExtract(volume string) ([]string) {
 
-	volumeURLs := strings.Split(volume, ":")
-
-	return volumeURLs
+	return strings.Split(volume, ":")
 }

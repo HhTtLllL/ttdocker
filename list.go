@@ -6,6 +6,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"syscall"
 	"text/tabwriter"
 	"ttdocker/container"
 )
@@ -20,7 +22,14 @@ func ListContainers(){
 	files, err := ioutil.ReadDir(dirURL)
 	if err != nil {
 
-		log.Errorf("Read idr %s error %v", dirURL, err)
+		w := tabwriter.NewWriter(os.Stdout, 12, 1, 3, ' ', 0)
+		//控制台输出的信息列
+		fmt.Fprint(w, "ID\tNAME\tPID\tSTATUS\tCOMMAND\tCREATED\n")
+		if err := w.Flush(); err != nil {
+
+			log.Errorf("Flush error %v", err)
+			return
+		}
 		return
 	}
 
@@ -29,12 +38,19 @@ func ListContainers(){
 	for _, file := range files {
 		//根据容器配置文件获取对应的信息，　然后转换成容器信息的对象
 		tmpContainer, err := getContainerInfo(file)
-
 		if err != nil {
 
 			log.Errorf("Get container info error %v", err)
 			continue
 		}
+
+		pid, _ := strconv.Atoi(tmpContainer.Pid)
+		if !checkPid(pid) && pid != 0 {
+
+			deleteContainerInfo(tmpContainer.Name)
+			continue
+		}
+
 		containers = append(containers, tmpContainer)
 	}
 
@@ -45,7 +61,8 @@ func ListContainers(){
 	//控制台输出的信息列
 	fmt.Fprint(w, "ID\tNAME\tPID\tSTATUS\tCOMMAND\tCREATED\n")
 
-	for _,item := range containers {
+	for _, item := range containers {
+
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			item.Id,
 			item.Name,
@@ -87,6 +104,22 @@ func getContainerInfo(file os.FileInfo) (* container.ContainerInfo, error) {
 		return nil, err
 	}
 
-
 	return &containerInfo, nil
+}
+
+func checkPid(pid int) bool {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		log.Printf("Unable to find the process %d", pid)
+		return false
+	}
+
+	err = process.Signal(syscall.Signal(0))
+	if err != nil {
+
+		return false
+	} else {
+
+		return true
+	}
 }

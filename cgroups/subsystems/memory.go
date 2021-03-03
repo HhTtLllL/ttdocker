@@ -20,6 +20,7 @@ func (s *MemorySubSystem) Set(cgroupPath string, res *ResourceConfig) error {
 	if subsysCgroupPath, err := GetCgroupPath(s.Name(), cgroupPath, true); err == nil {
 
 		if res.MemoryLimit != "" {
+			/* 设置这个cgroup的内存限制,即 将限制写入到cgroup对应的目录的memory.limit_in_bytes文件中。 */
 
 			//writefile 函数向filename指定的文件中写入数据。如果文件不存在将按给出的权限创建文件，否则在写入数据之前清空文件。
 			// Join 讲任意数量的路径元素放入一个单一路径里 sbusysCgroupPath/memory.limit_in_bytes

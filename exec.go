@@ -69,6 +69,7 @@ func GetContainerPidByName(containerName string) (string, error ){
 		return "", err
 	}
 	fmt.Println("Pid = ", containerInfo.Pid)
+
 	return containerInfo.Pid, nil
 }
 
@@ -77,7 +78,6 @@ func getEnvsByPid(pid string)[]string {
 	//进程环境变量存放的位置是 /proc/PID/environ
 	path := fmt.Sprintf("/proc/%s/environ", pid)
 	contengBytes, err := ioutil.ReadFile(path)
-
 	if err != nil {
 
 		log.Errorf("Read file %s error %v", path, err)

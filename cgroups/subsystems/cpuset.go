@@ -29,7 +29,6 @@ func (s *CpusetSubSystem)Set(cgroupPath string, res *ResourceConfig) error {
 
 		return err
 	}
-
 }
 
 
